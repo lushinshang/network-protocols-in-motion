@@ -518,12 +518,13 @@ h1,h2,h3,p,ol,ul,dl,dd{margin:0;padding:0}
       if (!playing || !narr) { stopAudio(); return; }
       var s = steps[stepAt(t)], off = t - (s.t0 + s.lead);
       var src = A[s.audioId];
-      if (!src || off < -0.02 || off >= s.audioDur - 0.02) { if (off >= s.audioDur - 0.02) stopAudio(); return; }
+      /* 旁白超過時間軸預期長度時讓它自然播完（手機音訊啟動有延遲，照時間軸硬停會吃掉句尾） */
+      if (!src || off < -0.02 || off >= s.audioDur - 0.02) return;
       if (audioKey !== s.audioId) {
         stopAudio(); audioKey = s.audioId; audio = getEl(); audio.src = src; audio.playbackRate = rate;
         try { audio.currentTime = Math.max(0, off); } catch (e) { }
         var p = audio.play(); if (p && p.catch) p.catch(function () { audioKey = null; });
-      } else if (audio && Math.abs(audio.currentTime - off * 1) > 0.5 * Math.max(1, rate)) { try { audio.currentTime = Math.max(0, off); } catch (e) { } }
+      } else if (audio && Math.abs(audio.currentTime - off * 1) > 1.5 * Math.max(1, rate)) { try { audio.currentTime = Math.max(0, off); } catch (e) { } }
     }
     function frame(now) {
       if (!playing) return;
