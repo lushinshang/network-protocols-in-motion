@@ -1,0 +1,1041 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>網路協定，動起來 · Network Protocols, in Motion</title>
+<meta name="description" content="封包怎麼走　協定怎麼說。14 個網路協定、78 個步驟的互動教學動畫，兩種看法：封包旅程、分層剖面。">
+<script>(function(d){d.className+=' js';var m=matchMedia('(min-width:820px) and (orientation:landscape)');d.setAttribute('data-axis',m.matches?'h':'v');d.setAttribute('data-short',m.matches&&innerHeight<=560?'1':'0')})(document.documentElement)</script>
+<style>
+:root{
+  --hb:24px;
+  --a-bg:#0B0F1A;--a-surface:#121828;--a-text:#EAF0FF;--a-muted:#9AA7C7;--a-amber:#FFB020;--a-cyan:#4DD6FF;--a-line:rgba(234,240,255,.16);
+  --b-bg:#F3EFE6;--b-paper2:#E9E3D4;--b-ink:#14110F;--b-muted:#5A5349;--b-signal:#D93A1E;--b-signal-ink:#A82610;--b-hair:rgba(20,17,15,.2);
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --sans:"PingFang TC","Hiragino Sans TC","Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;
+  --gut:clamp(16px,4vw,56px);
+  --pb:clamp(62px,17dvh,168px);   /* 路徑距舞台底的距離（水平版） */
+  --slot:clamp(300px,34vw,calc(600px*var(--k))); /* 一站的水平寬度 */
+  --k:1;--ke:1;--at:0px;                 /* 大螢幕放大倍率（JS 設定；<1600 寬且<1000 高時為 1）、上緣錨點列高度 */
+  --cw:calc((var(--slot) - 28px)/var(--k)); /* 站卡版面寬（視覺寬＝×k） */
+  --rx:26px;                      /* 垂直版路徑的 x */
+  --ease:cubic-bezier(.2,.8,.2,1);
+}
+*{box-sizing:border-box;margin:0}
+html{-webkit-text-size-adjust:100%;background:var(--a-bg)}
+body{font-family:var(--sans);background:var(--a-bg);color:var(--a-text);line-height:1.55}
+ol,ul{list-style:none;padding:0}
+a{color:inherit;-webkit-user-drag:none;user-drag:none}
+button{font:inherit;color:inherit}
+a:focus-visible,button:focus-visible{outline:3px solid #FFB020;outline-offset:3px}
+.skip{position:absolute;left:-999px;top:8px;background:#FFB020;color:#0B0F1A;padding:10px 16px;border-radius:8px;z-index:30;font-weight:800;text-decoration:none}
+.skip:focus{left:8px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.mono{font-family:var(--mono)}
+
+/* ============ 基礎（無 JS：直向列表，可捲動） ============ */
+.stage{display:block}
+.view{display:block}
+.world{display:block}
+.node,.line,.walked,.pkt,.gh,.nl,.ctrl,.ruler,.ghost{display:none}
+.ttl-r{display:none}
+.pos{padding:clamp(20px,5vw,48px) var(--gut)}
+.hero{padding-top:clamp(40px,8vw,96px)}
+.hero-in{max-width:1100px;margin:0 auto}
+.hero-below{max-width:1100px;margin:18px auto 0}
+.hb{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.stations{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:16px;padding:8px var(--gut)}
+.stations .pos{padding:0}
+.ent-in{max-width:1100px;margin:0 auto}
+.ent-foot{max-width:1100px;margin:18px auto 0}
+
+/* ---- 共用內容樣式 ---- */
+.kick{font:600 12px/1.2 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--a-amber);margin-bottom:12px}
+h1{font-size:clamp(34px,8.4vw,112px);line-height:1.04;font-weight:800;letter-spacing:-.02em}
+h1 .zh{display:block}
+h1 .en{display:block;font:600 clamp(16px,2.6vw,32px)/1.3 var(--mono);margin-top:.45em;letter-spacing:0;color:var(--a-muted)}
+.subs{display:grid;grid-template-columns:1fr 1fr;gap:var(--gut);margin-top:clamp(10px,2.4dvh,24px)}
+.sub{font-size:clamp(16px,min(2.1vw,3.2dvh),26px);font-weight:700;line-height:1.35}
+.sub small{display:block;font:500 clamp(12.5px,1.4vw,16px)/1.4 var(--mono);margin-top:.3em}
+.sub.l small{color:var(--a-muted)}
+.sub.r{text-align:right}
+.sub.r small{color:var(--a-muted)}
+.pill{display:inline-flex;align-items:center;gap:.55em;min-height:48px;padding:8px 20px;border-radius:999px;text-decoration:none;font-weight:800;font-size:16px;white-space:nowrap;transition:transform .2s var(--ease)}
+.pill small{font:500 12px var(--mono);opacity:.9}
+.pill:hover{transform:translateY(-2px)}
+.pill.a{background:var(--a-amber);color:#0B0F1A}
+.pill.b{background:var(--b-bg);color:var(--b-ink);border:2px solid var(--b-ink)}
+.prompt{display:none;text-wrap:balance;font:600 clamp(13px,1.15vw,15px)/1.45 var(--mono);color:var(--a-muted);text-align:center;background:var(--a-bg);border:1px solid var(--a-line);border-radius:14px;padding:8px 16px}
+.js .prompt{display:block}
+.hv{display:none}
+.js[data-axis=v] .hh{display:none}.js[data-axis=v] .hv{display:inline}
+.prompt b{color:var(--a-text);font-weight:700}
+.prompt .arr{display:inline-block;color:var(--a-amber);font-weight:800}
+
+/* 站卡 */
+.card{background:var(--a-surface);border:1px solid var(--a-line);border-radius:18px;padding:clamp(14px,2.2dvh,22px) 20px;display:flex;flex-direction:column;gap:clamp(8px,1.4dvh,14px);position:relative}
+.meta{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font:600 12px/1.2 var(--mono);letter-spacing:.06em;color:var(--a-muted)}
+.meta .no{color:var(--a-amber);font-size:13px}.meta .no i{font-style:normal;color:var(--a-muted)}
+.card h2{font-size:clamp(28px,min(4.6vw,7.6dvh),92px);line-height:1.05;font-weight:800;letter-spacing:-.01em}
+.ph{white-space:nowrap}
+.sz{text-wrap:balance;line-break:strict;font-size:clamp(15px,min(1.55vw,2.5dvh),26px);line-height:1.5;color:var(--a-text)}
+.se{text-wrap:balance;font:500 clamp(13px,min(1.05vw,1.9dvh),17px)/1.45 var(--mono);color:var(--a-muted)}
+.lk{display:flex;gap:10px;margin-top:2px}
+.lk a{flex:1 1 0;min-width:0;display:flex;flex-direction:column;justify-content:center;min-height:52px;padding:6px 14px;border-radius:12px;text-decoration:none;font-weight:800;font-size:15px;line-height:1.25;transition:transform .2s var(--ease),filter .2s}
+.lk a b{font:800 15px var(--mono);margin-right:.35em}
+.lk .pv{font:500 12px/1.3 var(--mono);opacity:.9}
+.lk a:hover,.lk a:focus-visible{transform:translateY(-2px);filter:brightness(1.12)}
+.lk a.la{background:#1B2440;color:var(--a-amber);border:1px solid rgba(255,176,32,.5)}
+.lk a.lb{background:var(--b-bg);color:var(--b-ink);border:1px solid var(--b-hair)}
+.lk a.lb b{color:var(--b-signal-ink)}
+
+/* 入口站 */
+.kick.c{text-align:center}
+.gate{display:flex;gap:28px;justify-content:center;width:100%}
+.door{flex:1 1 0;max-width:540px;border-radius:20px;padding:clamp(14px,2.4dvh,24px) clamp(16px,2vw,26px);display:flex;flex-direction:column;gap:clamp(6px,1.2dvh,12px);position:relative;overflow:hidden}
+.door.a{background:var(--a-surface);color:var(--a-text);border:1px solid rgba(255,176,32,.45)}
+.door.b{background:var(--b-bg);color:var(--b-ink);border:1px solid var(--b-hair)}
+.door .tag{font:700 12px/1.2 var(--mono);letter-spacing:.14em;text-transform:uppercase}
+.door.a .tag{color:var(--a-amber)}.door.b .tag{color:var(--b-signal-ink)}
+.door h2{font-size:clamp(26px,min(3.4vw,5.2dvh),46px);line-height:1.1;font-weight:800}
+.door h2 em{display:block;font:600 clamp(13px,1.3vw,17px)/1.4 var(--mono);font-style:normal;margin-top:.25em}
+.door.a h2 em{color:var(--a-muted)}.door.b h2 em{color:var(--b-muted)}
+.door p.lead{text-wrap:balance;line-break:strict;font-size:clamp(14.5px,min(1.3vw,2.1dvh),18px);line-height:1.5}
+.door p.leaden{text-wrap:balance;font:500 clamp(12.5px,1.05vw,14px)/1.45 var(--mono)}
+.door.a p.leaden{color:var(--a-muted)}.door.b p.leaden{color:var(--b-muted)}
+.art{border-radius:12px;overflow:hidden;height:clamp(60px,12dvh,110px)}
+.door.a .art{background:#0B0F1A;border:1px solid var(--a-line)}
+.door.b .art{background:var(--b-paper2);border:1px solid var(--b-hair)}
+.art svg{display:block;width:100%;height:100%}
+.door .pill{align-self:flex-start;margin-top:auto}
+.door.a .pill{background:var(--a-amber);color:#0B0F1A}
+.door.b .pill{background:var(--b-ink);color:var(--b-bg)}
+.door.b a:focus-visible{outline-color:var(--b-signal-ink)}
+.ent-foot{font:500 clamp(11.5px,1vw,13px)/1.55 var(--mono);color:var(--a-muted);text-align:center}
+.ent-foot kbd{font:600 11.5px var(--mono);border:1px solid var(--a-line);border-radius:4px;padding:0 5px;color:var(--a-text)}
+.ent-foot p+p{margin-top:3px}
+.ent-foot p{text-wrap:pretty;line-break:strict}
+.ent-foot .zh{font-family:var(--sans)}
+
+/* 入口預覽動態 */
+.adot{transform-box:fill-box}
+.d-a:hover .adot,.d-a:focus-within .adot{animation:arun 2.6s var(--ease) infinite}
+@keyframes arun{0%{transform:translate(0,0)}22%{transform:translate(90px,0)}39%{transform:translate(150px,-40px)}61%{transform:translate(240px,-40px)}78%{transform:translate(300px,0)}100%{transform:translate(390px,0)}}
+.bl{transform-box:fill-box;transform-origin:center}
+.d-b:hover .bl,.d-b:focus-within .bl{animation:wrap 3.4s var(--ease) infinite backwards}
+.d-b .bl:nth-of-type(2){animation-delay:.35s!important}.d-b .bl:nth-of-type(3){animation-delay:.7s!important}.d-b .bl:nth-of-type(4){animation-delay:1.05s!important}.d-b .bl:nth-of-type(5){animation-delay:1.4s!important}
+@keyframes wrap{0%{transform:scale(.55);opacity:0}14%{transform:scale(1);opacity:1}86%{transform:scale(1);opacity:1}100%{transform:scale(1);opacity:0}}
+
+/* ============ JS 版：不捲動的固定舞台 ============ */
+html.js,html.js body{height:100dvh;overflow:hidden;overscroll-behavior:none}
+.js .stage{position:fixed;inset:0;display:flex;flex-direction:column;background:var(--a-bg)}
+.js .view{position:relative;flex:1 1 0;min-height:0;overflow:hidden;overflow:clip;touch-action:pan-y;cursor:grab;-webkit-user-select:none;user-select:none}
+.js[data-axis=v] .view{touch-action:pan-x}
+.js .view.dragging{cursor:grabbing}
+.js .world{position:absolute;left:0;top:0;will-change:transform}
+.js .pos{position:relative;flex:none;padding:0}
+.js .stations{padding:0;display:flex}
+.js .node,.js .line,.js .walked,.js .pkt,.js .gh,.js .nl{display:block}
+.js .ctrl{display:grid}.js .ruler{display:block}
+.js .ghost{display:block}
+
+/* 大螢幕上緣錨點列（章節標頭）：僅 html[data-big] 顯示；Hero 隱藏（大標題本身即錨點） */
+.anchor{display:none}
+.js[data-big] .anchor{display:flex;position:absolute;left:var(--gut);right:var(--gut);top:0;height:var(--at);align-items:center;justify-content:space-between;gap:16px;z-index:5;pointer-events:none;border-bottom:1px solid var(--a-line);font:600 calc(13px*var(--k)) var(--mono);letter-spacing:.08em;color:var(--a-muted);transition:opacity .4s}
+.js[data-big][data-axis=h] .hero-in{bottom:calc(var(--pb) + 30px + 12dvh)}
+.js[data-big][data-axis=h] .kick{font-size:calc(12px*var(--k))}
+.js[data-big][data-axis=h] h1 .en{font-size:clamp(15px,min(2.6vw,3.8dvh),calc(40px*var(--k)))}
+.js[data-big][data-axis=h] .sub{font-size:calc(clamp(16px,min(2.1vw,3.2dvh),26px)*var(--k))}
+.js[data-big][data-axis=h] .sub small{font-size:calc(clamp(12.5px,1.4vw,16px)*var(--k))}
+.js[data-big][data-axis=h] h1{font-size:clamp(34px,min(8.4vw,13dvh),calc(150px*var(--k)))}
+.js[data-big] .anchor b{color:var(--a-amber);font-weight:700}
+.js[data-big].at-hero .anchor{opacity:0}
+.anchor .ar{text-transform:uppercase}
+/* 路徑 */
+.line,.walked{position:absolute;pointer-events:none;z-index:1}
+.line{background-image:repeating-linear-gradient(90deg,#7480A4 0 6px,transparent 6px 13px)} /* 路徑虛線：對暗底約 4.9:1、對 Hero 右半淺底約 3.4:1，且站卡陰影壓在線上時仍 ≥3.8:1 */
+.js[data-axis=v] .line{background-image:repeating-linear-gradient(180deg,#7480A4 0 6px,transparent 6px 13px)}
+.walked{background:var(--a-amber);transform-origin:0 0;border-radius:2px}
+.node{position:absolute;width:16px;height:16px;border-radius:50%;border:2px solid var(--a-cyan);background:var(--a-bg);transform:translate(-50%,-50%);z-index:2;cursor:pointer}
+.node::before{content:"";position:absolute;inset:-14px;border-radius:50%}
+.node::after{content:"";position:absolute;inset:2px;border-radius:50%;background:var(--a-amber);opacity:0;transition:opacity .3s}
+.pos.vis .node{border-color:var(--a-amber)}.pos.vis .node::after{opacity:1}
+.ring{position:absolute;left:50%;top:50%;width:16px;height:16px;margin:-8px 0 0 -8px;border:2px solid var(--a-amber);border-radius:50%;opacity:0;pointer-events:none}
+.pkt,.gh{position:absolute;left:0;top:0;width:18px;height:18px;border-radius:5px;background:var(--a-amber);pointer-events:none;opacity:0}
+.pkt{z-index:7;box-shadow:0 0 22px rgba(255,176,32,.65)}
+.pkt::after{content:"";position:absolute;left:4px;right:4px;top:4px;height:3px;border-radius:2px;background:#0B0F1A;opacity:.35;box-shadow:0 5px 0 #0B0F1A}
+.pkt.show{opacity:1}
+.gh{z-index:6;width:14px;height:14px;margin:2px;transition:opacity .2s}
+.moving .gh:nth-of-type(1){opacity:.45}.moving .gh:nth-of-type(2){opacity:.28}.moving .gh:nth-of-type(3){opacity:.14}
+.nl{position:absolute;left:0;right:0;text-align:center;font:600 12px/1 var(--mono);color:var(--a-muted);letter-spacing:.04em;pointer-events:none;transition:color .3s;z-index:2}
+.pos.vis .nl{color:#C9D3EE}.pos.cur .nl{color:var(--a-amber)}
+
+/* 非目前站：退後、淡出、不可操作（inert） */
+.js .inr{transition:opacity .45s var(--ease),transform .55s var(--ease)}
+.js .pos:not(.cur) .inr{opacity:.42}
+.js .st:not(.cur){cursor:pointer}
+.js .st:not(.cur) .card{transform:scale(calc(.93*var(--k)))}
+.js .st.cur .card{transform:scale(var(--k))}
+.js .st.cur .card{transition-delay:.12s;box-shadow:0 0 0 1px rgba(255,176,32,.55),0 18px 50px rgba(0,0,0,.45)}
+.js .st .card{transform-origin:50% 100%}
+.js .st.cur .card:hover{transform:translateY(-4px) scale(var(--k))}
+
+/* ---------- 水平版 ---------- */
+.js[data-axis=h] .world{height:100%;display:flex;flex-direction:row}
+.js[data-axis=h] .stations{height:100%}
+.js[data-axis=h] .hero,.js[data-axis=h] .enter{width:var(--vw,100vw);height:100%}
+.js[data-axis=h] .st{width:var(--slot);height:100%}
+.js[data-axis=h] .node{left:50%;top:calc(100% - var(--pb))}
+.js[data-axis=h] .nl{top:calc(100% - var(--pb) + 16px)}
+.js[data-axis=h] .st::before{content:"";position:absolute;left:50%;width:1px;bottom:calc(var(--pb) + 8px);height:20px;background:var(--a-line)}
+.js[data-axis=h] .st .card{position:absolute;left:calc(50% - var(--cw)/2);width:var(--cw);bottom:calc(var(--pb) + 28px);max-height:calc((100% - var(--pb) - 40px - var(--at))/var(--k));overflow:auto;overscroll-behavior:contain;touch-action:pan-y;scrollbar-width:thin}
+.js[data-axis=h] .hero{background:var(--a-bg)}
+.js[data-axis=h] .hero:not(.cur) .inr{opacity:calc(.42*var(--hf,1))}
+.js[data-axis=h] .hero::before{content:"";position:absolute;top:0;bottom:0;left:50%;right:0;background:var(--b-bg);transform:scaleX(var(--hf,1));transform-origin:0 0;pointer-events:none} /* 淺色半邊離開時向分色線收合（實色硬邊掃過），不用 alpha：避免在暗底上疊出灰板 */
+.js[data-axis=h] .hero-in{position:absolute;left:var(--gut);right:var(--gut);bottom:calc(var(--pb) + 30px + 4dvh);margin:0;max-width:none;text-align:center}
+.js[data-axis=h] .hero-below{position:absolute;left:var(--gut);right:var(--gut);top:calc(100% - var(--pb) + var(--hb));margin:0;max-width:none}
+.js[data-axis=h] .hero .node{left:50%;top:calc(-1 * var(--hb))}
+.js[data-axis=h] .hb{display:grid;grid-template-columns:1fr 1fr;grid-template-areas:"a b" "p .";align-items:start;gap:10px 18px}
+.js[data-axis=h] .hb .pill.a{grid-area:a;justify-self:start}.js[data-axis=h] .hb .pill.b{grid-area:b;justify-self:end}
+.js[data-axis=h] .hb .prompt{grid-area:p;justify-self:center;max-width:100%} /* 提示膠囊移到暗色半邊（分色線左側），不壓在分色線上 */
+@media (max-height:820px){.js[data-axis=h]:not([data-short="1"]) .hero-below .prompt .en2,.js[data-axis=h]:not([data-short="1"]) .hero-below .prompt .hint-arr,.js[data-axis=h]:not([data-short="1"]) .hero-below .prompt br{display:none}}
+.js[data-short="1"] .hb{grid-template-columns:auto 1fr auto;grid-template-areas:"a p b";gap:10px 14px}
+.js[data-short="1"] .hb .prompt{justify-self:start;white-space:nowrap;font-size:12px;padding:6px 10px;max-width:calc(50vw - 12px - var(--gut) - 150px - 28px)} /* 矮視窗：提示膠囊也留在分色線左側（A 鈕與分色線之間），單行 */
+.js[data-axis=h] .ent-in{position:absolute;left:var(--gut);right:var(--gut);bottom:calc(var(--pb) + 30px);margin:0;max-width:none}
+.js[data-axis=h] .ent-in .node{left:50%;top:calc(100% + 30px)}
+.ent-main{display:flex;flex-direction:column;align-items:center;gap:14px}
+.js[data-axis=h] .gate{max-width:1120px}
+.js[data-axis=h] .ent-main{transform:scale(var(--ke));transform-origin:50% 100%}
+.js[data-axis=h] .ent-foot{position:absolute;left:var(--gut);right:var(--gut);top:calc(100% - var(--pb) + 24px);margin:0;max-width:none}
+
+/* 兩個入口：離站時分開、到站時合攏 */
+.door.a{transform:translateX(0)}
+.js:not(.rm) .pos:not(.cur) .door.a{transform:translateX(-56px)}
+.js:not(.rm) .pos:not(.cur) .door.b{transform:translateX(56px)}
+.js .door{transition:transform .8s var(--ease)}
+.js[data-axis=v]:not(.rm) .pos:not(.cur) .door.a{transform:translateX(-30px)}
+.js[data-axis=v]:not(.rm) .pos:not(.cur) .door.b{transform:translateX(30px)}
+
+/* 超大淡色站號（背景層次） */
+.js .ghost{position:absolute;pointer-events:none;font:800 clamp(110px,26dvh,320px)/1 var(--mono);letter-spacing:-.05em;color:transparent;-webkit-text-stroke:1.5px rgba(234,240,255,.1);z-index:0;white-space:nowrap;transition:opacity .5s}
+.js .pos:not(.cur) .ghost{opacity:.5}
+.js .pos.cur .ghost{-webkit-text-stroke-color:rgba(234,240,255,.17)}
+.js[data-axis=h] .ghost{left:50%;bottom:calc(var(--pb) + 28px + 19dvh);transform:translateX(-50%)}
+.js[data-axis=v] .ghost,.js[data-short="1"] .ghost{display:none}
+.js .card{z-index:3}
+
+/* 垂直版 */
+.js[data-axis=v] .world{width:100%;display:flex;flex-direction:column}
+.js[data-axis=v] .stations{display:block}
+.js[data-axis=v] .hero,.js[data-axis=v] .enter{height:auto;min-height:var(--vh,100dvh);display:flex;flex-direction:column}
+.js[data-axis=v] .st{padding:14px 0}
+.js[data-axis=v] .node{left:var(--rx)}
+.js[data-axis=v] .st .node{top:50%}
+.js[data-axis=v] .st .card{margin:0 16px 0 calc(var(--rx) + 38px)}
+.js[data-axis=v] .nl{display:none}
+.js[data-axis=v] .hero{background:var(--a-bg)}
+.js[data-axis=v] .hint-arr,.js[data-short="1"] .hint-arr{display:none}
+.js[data-axis=v] .hero{padding-top:max(22px,4dvh)}
+.js[data-axis=v] .hero-in{position:static;margin:auto var(--gut) 0}
+.js[data-axis=v] .hero-below{position:relative;margin:clamp(30px,6dvh,60px) 16px auto calc(var(--rx) + 38px);max-width:none}
+.js[data-axis=v] .hero-below{padding-bottom:24px}
+.js[data-axis=v] .hero .node,.js[data-axis=v] .enter .node{left:-38px;top:16px}
+.js[data-axis=v] .hb{display:flex;flex-direction:column;align-items:stretch;gap:12px}
+.js[data-axis=v] .hb .prompt{text-align:left;order:3}
+.js[data-axis=v] .hb .pill{justify-content:center}
+.js[data-axis=v] .enter{padding-top:28px}
+.js[data-axis=v] .ent-in{position:relative;margin:auto 16px auto calc(var(--rx) + 38px);max-width:none}
+.js[data-axis=v] .ent-main{align-items:stretch;gap:0}
+.js[data-axis=v] .ent-in .kick{text-align:left;margin-bottom:10px}
+.js[data-axis=v] .gate{flex-direction:column;gap:14px}
+.js[data-axis=v] .door{max-width:none;flex:none}
+@media (min-width:600px){.js[data-axis=v] .gate{flex-direction:row}.js[data-axis=v] .door{flex:1 1 0}}
+@media (max-width:599px){.js[data-axis=v] .door .art,.js[data-axis=v] .door p.leaden,.js[data-axis=v] .ent-foot .kb{display:none}}
+@media (max-width:599px) and (max-height:760px){.js[data-axis=v] .door p.lead{display:none}}
+.js[data-axis=v] .ent-foot{position:static;margin:0 16px 0 calc(var(--rx) + 38px);padding:16px 0 18px;max-width:none;text-align:left}
+
+/* 標題兩段色（水平版：左暗右淺；以複製的一層裁切，避免 background-clip 的限制） */
+.ttl{position:relative;display:block}
+.ttl-l{display:block}
+.js[data-axis=h] .ttl-l{clip-path:inset(0 50% 0 0)}
+/* 英文小標與 kicker：分色線兩側各放各的字（左側靠線右對齊、右側靠線左對齊），線不穿過任何字 */
+.js[data-axis=h] .ttl-l .s2,.js[data-axis=h] .ttl-r .s1,.js[data-axis=h] .sg{display:none}
+.js[data-axis=h] .ttl-l .s1{display:block;width:50%;text-align:right;padding-right:.9em}
+.js[data-axis=h] .ttl-r .s2{display:block;margin-left:50%;text-align:left;padding-left:.9em}
+.js[data-axis=h] .ttl-r{display:block;position:absolute;inset:0;clip-path:inset(0 0 0 50%);color:color-mix(in srgb,var(--b-ink) calc(var(--hf,1)*100%),var(--a-text))}
+.js[data-axis=h] .ttl-r .en{color:color-mix(in srgb,var(--b-muted) calc(var(--hf,1)*100%),var(--a-muted))}
+.js[data-axis=h] .kick .ttl-r{color:color-mix(in srgb,var(--b-signal-ink) calc(var(--hf,1)*100%),var(--a-amber))}
+.vb{display:none}
+@media (max-width:599px){.js[data-axis=v] .vb{display:inline}}
+.comma{display:inline-block;transform-origin:50% 80%}
+.comma.pop{animation:pop .5s var(--ease)}
+@keyframes pop{0%{transform:scale(1)}35%{transform:scale(1.45) translateY(-.05em)}100%{transform:scale(1)}}
+.js[data-axis=h] .sub.r{color:color-mix(in srgb,var(--b-ink) calc(var(--hf,1)*100%),var(--a-text))}.js[data-axis=h] .sub.r small{color:color-mix(in srgb,var(--b-muted) calc(var(--hf,1)*100%),var(--a-muted))}
+.js[data-axis=h] .hero-below .prompt{color:var(--a-muted)}
+.js[data-axis=h] .hero-below .pill.b:focus-visible{outline-color:var(--b-signal-ink)}
+.js[data-axis=h] .hero-below .pill.b{background:var(--b-ink);color:var(--b-bg);border-color:var(--b-ink)}
+.js[data-axis=v] .hero-in .sub.r{text-align:left}
+.js[data-axis=v] .subs{grid-template-columns:1fr;gap:6px}
+.js[data-axis=v] h1{font-size:clamp(36px,12.5vw,76px)}
+.js[data-axis=v] h1 .en{font-size:clamp(15px,4.2vw,26px)}
+.js[data-axis=v] .kick{margin-bottom:10px}
+.js[data-axis=h] h1{font-size:clamp(34px,min(8.4vw,13dvh),150px)}
+.js[data-axis=h] h1 .en{font-size:clamp(15px,min(2.6vw,3.8dvh),40px)}
+.hint-arr{animation:nudge 1.6s ease-in-out infinite}
+@keyframes nudge{0%,100%{transform:translateX(0)}50%{transform:translateX(5px)}}
+.js[data-axis=v] .hint-arr{animation-name:nudgey}
+@keyframes nudgey{0%,100%{transform:translateY(0)}50%{transform:translateY(5px)}}
+.js .pos:not(.hero) .hint-arr{animation:none}
+
+/* 層次尺（B 的語彙：紙色、墨線、signal 指示條） */
+.ruler{position:relative;background:var(--b-bg);color:var(--b-muted);border-top:1px solid var(--b-hair);flex:none}
+.ruler ol{display:grid;grid-template-columns:repeat(5,1fr)}
+.ruler li{display:flex;align-items:center;justify-content:center;gap:.5em;height:40px;font:600 12.5px/1 var(--mono);white-space:nowrap;border-left:1px solid var(--b-hair);transition:color .3s;
+  background-image:repeating-linear-gradient(90deg,var(--b-hair) 0 1px,transparent 1px 10px);background-size:100% 6px;background-repeat:no-repeat;background-position:0 0}
+.ruler li:first-child{border-left:0}
+.ruler li b{color:var(--b-ink);font-weight:800}
+.ruler li em{font-style:normal;font-family:var(--sans);font-weight:600}
+.ruler li.on{color:var(--b-signal-ink)}.ruler li.on b{color:var(--b-signal-ink)}
+.ruler li .e{font-weight:500;opacity:.9}
+.ruler .ind{position:absolute;left:0;top:0;width:20%;height:4px;background:var(--b-signal);transition:transform .3s var(--ease),opacity .3s;opacity:0}
+.ruler .ind.on{opacity:1}
+.js .ruler{transition:background .4s}
+.dk .ruler{background:#D5CFC0;color:#463F35;border-top-color:rgba(20,17,15,.3)}
+.dk .ruler li.on,.dk .ruler li.on b{color:#8E1F0C}
+.ruler .cap{position:absolute;right:8px;bottom:100%;display:none}
+
+/* 控制列 */
+.ctrl{flex:none;background:var(--a-bg);border-top:1px solid var(--a-line);padding:8px var(--gut);gap:6px 12px;align-items:center;grid-template-columns:170px minmax(0,1fr) 170px;grid-template-areas:"auto nav cnt"}
+.ctrl .auto{grid-area:auto;justify-self:start}
+.ctrl .navc{grid-area:nav;display:flex;justify-content:center;align-items:center;gap:6px;min-width:0}
+#prev{grid-area:prev}#next{grid-area:next}
+.ctrl .cnt{grid-area:cnt;justify-self:end;min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;font:600 13px/1.2 var(--mono);color:var(--a-muted);white-space:nowrap;text-align:right}
+.ctrl .cnt b{color:var(--a-amber);font-size:15px}
+.btn{position:relative;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:.5em;min-width:44px;min-height:44px;padding:0 14px;border-radius:999px;border:1.5px solid var(--a-line);background:#121828;color:var(--a-text);font-weight:700;font-size:14px;cursor:pointer;transition:background .2s,transform .2s var(--ease),border-color .2s}
+.btn:hover{border-color:rgba(255,176,32,.7);background:#1B2440}
+.btn[hidden]{display:none}
+.btn[aria-disabled=true]{opacity:.38;cursor:not-allowed;border-style:dashed;background:transparent}
+.btn[aria-disabled=true]:hover{border-color:var(--a-line);background:transparent}
+.btn[aria-pressed=true]{background:var(--a-amber);color:#0B0F1A;border-color:var(--a-amber)}
+.btn .t{display:inline}
+.btn .ar{font-family:var(--mono);font-weight:800}
+.dots{display:flex;align-items:center;flex:1 1 0;max-width:704px;min-width:0;grid-area:dots;justify-self:center;width:100%}
+.dots li{flex:1 1 0;min-width:0;max-width:44px}
+.dots button{display:block;width:100%;height:44px;background:none;border:0;padding:0;cursor:pointer;position:relative}
+.dots button::before{content:"";position:absolute;left:50%;top:50%;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;background:rgba(234,240,255,.45);transition:transform .3s var(--ease),background .3s} /* 未走到的點：對暗底 ≥3:1（WCAG 1.4.11），.28 時僅約 2.3:1 */
+.dots button.seen::before{background:rgba(255,176,32,.6)}
+.dots button[aria-current=step]::before{background:var(--a-amber);transform:scale(1.7)}
+.dots button:hover::before{background:var(--a-text)}
+.dots button.end::before{border-radius:2px}
+
+/* ---- 響應：寬度 / 高度 ---- */
+@media (max-width:1359px){.btn.nav .t{display:none}.btn.nav{padding:0}.btn.auto .e{display:none}}
+/* 非矮視窗、寬 <1360：兩列（第 1 列 自動導覽｜計數｜上一站｜下一站；第 2 列 進度點滿版，每點可點寬度盡量 44px） */
+@media (max-width:1359px){
+  .js:not([data-short="1"]) .ctrl{grid-template-columns:auto minmax(0,1fr) 44px 44px;grid-template-areas:"auto cnt prev next" "dots dots dots dots";gap:2px 8px;padding-top:4px}
+  .js:not([data-short="1"]) .ctrl .navc{display:contents}
+}
+@media (max-width:479px){.btn.auto .t{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}.btn.auto{padding:0}}
+@media (max-width:599px){.ruler li{height:34px;font-size:11.5px;gap:.3em}.ruler li .e{display:none}}
+@media (max-width:760px){.ruler li .e{display:none}}
+
+/* 矮視窗（橫向手機） */
+.js[data-short="1"]{--pb:70px;--slot:clamp(330px,46vw,460px)}
+.js[data-short="1"] .ctrl{padding:2px 12px;gap:8px;grid-template-columns:120px minmax(0,1fr) 120px}
+.js[data-short="1"] .ctrl .cnt{font-size:12px}.js[data-short="1"] .ctrl .cnt b{font-size:13px}
+.js[data-short="1"] .btn.auto{padding:0}
+.js[data-short="1"] .btn.auto .t{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.js[data-short="1"] .btn{min-height:44px}
+.js[data-short="1"] .ruler li{height:26px;font-size:11.5px}
+.js[data-short="1"] .kick{display:none}
+.js[data-short="1"]{--hb:12px}
+.js[data-short="1"] .hero-in{bottom:calc(var(--pb) + 22px)!important}
+.js[data-short="1"] .ent-foot{top:calc(100% - var(--pb) + 14px)!important}
+.js[data-short="1"] .prompt{padding:6px 12px}
+.js[data-short="1"] .prompt br{display:none}
+.js[data-short="1"] .meta .ly .e{display:none}
+.js[data-short="1"] .btn.auto .e{display:none}
+.js[data-short="1"] .sub small{display:none}
+.js[data-short="1"] .subs{margin-top:6px}
+.js[data-short="1"] .st .card{display:grid;grid-template-columns:1fr auto;column-gap:14px;align-items:center;padding:10px 12px;gap:0 14px}
+.js[data-short="1"] .st .card .tx{display:flex;flex-direction:column;gap:4px;min-width:0}
+.js[data-short="1"] .st .card h2{font-size:26px}
+.js[data-short="1"] .st .card .sz{font-size:14.5px;line-height:1.4}
+.js[data-short="1"] .st .card .se{font-size:12px;line-height:1.35}
+.js[data-short="1"] .st .card .lk{flex-direction:column;width:132px;margin:0}
+.js[data-short="1"] .st .card .lk a{min-height:46px;padding:4px 10px;font-size:14px}
+.js[data-short="1"] .door .art,.js[data-short="1"] .door p.leaden{display:none}
+.js[data-short="1"] .door{gap:4px;padding:10px 14px}
+.js[data-short="1"] .door h2{font-size:24px}
+.js[data-short="1"] .door h2 em{display:none}
+.js[data-short="1"] .door p.lead{font-size:14px;line-height:1.4}
+.js[data-short="1"] .door .pill{min-height:44px;padding:4px 16px}
+.js[data-short="1"] .ent-main{gap:8px}
+.js[data-short="1"] .ent-foot{font-size:11px;line-height:1.4}
+.js[data-short="1"] .ent-foot .kb{display:none}
+.js[data-short="1"] .hero-below .pill{min-height:44px;padding:4px 16px}
+.js[data-short="1"] .hero-below .prompt .en2{display:none}
+@media (max-width:359px){.js[data-axis=v] .door .pill small{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}.js[data-axis=v] .door{padding:12px 14px}}
+@media (max-width:599px) and (max-height:640px){.js[data-axis=v] .door .tag,.js[data-axis=v] .door h2 em,.js[data-axis=v] .hero-below .prompt .en2,.js[data-axis=v] .sub small{display:none}.js[data-axis=v] .ent-foot{font-size:11px;line-height:1.45}.js[data-axis=v] .hero-below{margin-top:18px}.js[data-axis=v] .enter{padding-top:18px}}
+@media (max-height:700px){.js[data-axis=v] .door .art,.js[data-axis=v] .door p.leaden{display:none}}
+
+/* 降級：減少動態（即時切換；JS 同步取消進行中的動畫） */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{transition:none!important;animation:none!important}
+  .js .door{transform:none!important}
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#enter">跳到兩種看法 · Skip to the two views</a>
+<div class="stage" id="stage">
+<main class="view" id="view" aria-label="協定導覽舞台 · Protocol tour stage">
+ <div class="anchor" id="anchor" aria-hidden="true"><span class="al"></span><span class="ar">Network Protocols, in Motion</span></div>
+ <div class="world" id="world">
+  <i class="line" id="line" aria-hidden="true"></i><i class="walked" id="walked" aria-hidden="true"></i>
+
+  <section class="pos hero" id="start" aria-labelledby="h1">
+   <div class="hero-in inr">
+    <p class="kick ttl"><span class="ttl-l"><span class="s1">14 PROTOCOLS · 78 STEPS</span><span class="sg"> · </span><span class="s2">2 VIEWS</span></span><span class="ttl-r" aria-hidden="true"><span class="s1">14 PROTOCOLS · 78 STEPS</span><span class="sg"> · </span><span class="s2">2 VIEWS</span></span></p>
+    <h1 id="h1"><span class="ttl"><span class="ttl-l"><span class="zh">網路協定<span class="comma">，</span><br class="vb">動起來</span><span class="en"><span class="s1">Network Protocols,</span> <span class="s2">in Motion</span></span></span><span class="ttl-r" aria-hidden="true"><span class="zh">網路協定<span class="comma">，</span><br class="vb">動起來</span><span class="en"><span class="s1">Network Protocols,</span> <span class="s2">in Motion</span></span></span></span></h1>
+    <div class="subs">
+     <p class="sub l">封包怎麼走<small>How Packets Travel</small></p>
+     <p class="sub r">協定怎麼說<small>How Protocols Talk</small></p>
+    </div>
+   </div>
+   <div class="hero-below">
+    <span class="node" aria-hidden="true"><span class="ring"></span></span>
+    <div class="hb inr">
+    <a class="pill a" href="a-journey.html">封包旅程 <small>A</small><span aria-hidden="true">→</span></a>
+    <p class="prompt"><span class="zh"><span class="hh">按 <b>→</b> 或拖曳，跟著封包走</span><span class="hv">按 <b>↓</b> 或上滑，跟著封包走</span></span><br><span class="en2"><span class="hh">Press <b>→</b> or drag to follow the packet</span><span class="hv">Press <b>↓</b> or swipe up to follow the packet</span></span> <span class="hint-arr" aria-hidden="true">→</span></p>
+    <a class="pill b" href="b-section.html">分層剖面 <small>B</small><span aria-hidden="true">→</span></a>
+   </div>
+   </div>
+  </section>
+
+  <h2 class="sr">14 個協定站 · 14 protocol stations</h2>
+  <ol class="stations" id="stations">
+   <li class="pos st" id="ip" data-ly="3">
+    <span class="node" aria-hidden="true"><span class="ring"></span></span>
+    <span class="nl" aria-hidden="true">IP</span>
+    <span class="ghost" aria-hidden="true">L3</span>
+    <div class="card inr">
+     <div class="tx">
+      <div class="meta"><span class="no">01<i>/14</i></span><span class="ly">L3 · 網路 <span class="e">Network</span></span></div>
+      <h2>IP</h2>
+      <p class="sz"><span class="ph">給每台機器</span><span class="ph">一個位址，</span><span class="ph">決定封包</span><span class="ph">怎麼</span><span class="ph">一跳一跳</span><span class="ph">送到目的地</span></p>
+      <p class="se" lang="en">Gives every host an address and routes packets hop by hop</p>
+     </div>
+     <div class="lk">
+      <a class="la" href="a-journey.html?p=ip" aria-label="IP：封包旅程 A（5 步）"><span class="t"><b>A</b>封包旅程</span><span class="pv" aria-hidden="true">5 步 · 5 steps</span></a>
+      <a class="lb" href="b-section.html?p=ip" aria-label="IP：分層剖面 B（5 步）"><span class="t"><b>B</b>分層剖面</span><span class="pv" aria-hidden="true">5 步 · 5 steps</span></a>
+     </div>
+    </div>
+   </li>
+   <li class="pos st" id="icmp" data-ly="3">
+    <span class="node" aria-hidden="true"><span class="ring"></span></span>
+    <span class="nl" aria-hidden="true">ICMP</span>
+    <span class="ghost" aria-hidden="true">L3</span>
+    <div class="card inr">
+     <div class="tx">
+      <div class="meta"><span class="no">02<i>/14</i></span><span class="ly">L3 · 網路 <span class="e">Network</span></span></div>
+      <h2>ICMP</h2>
+      <p class="sz"><span class="ph">網路的</span><span class="ph">「回報員」：</span><span class="ph">ping、traceroute、</span><span class="ph">無法到達</span><span class="ph">都靠它</span></p>
+      <p class="se" lang="en">The network's messenger — ping, traceroute, "unreachable"</p>
+     </div>
+     <div class="lk">
+      <a class="la" href="a-journey.html?p=icmp" aria-label="ICMP：封包旅程 A（6 步）"><span class="t"><b>A</b>封包旅程</span><span class="pv" aria-hidden="true">6 步 · 6 steps</span></a>
+      <a class="lb" href="b-section.html?p=icmp" aria-label="ICMP：分層剖面 B（6 步）"><span class="t"><b>B</b>分層剖面</span><span class="pv" aria-hidden="true">6 步 · 6 steps</span></a>
+     </div>
+    </div>
+   </li>
+   <li class="pos st" id="udp" data-ly="4">
+    <span class="node" aria-hidden="true"><span class="ring"></span></span>
+    <span class="nl" aria-hidden="true">UDP</span>
+    <span class="ghost" aria-hidden="true">L4</span>
+    <div class="card inr">
+     <div class="tx">
+      <div class="meta"><span class="no">03<i>/14</i></span><span class="ly">L4 · 傳輸 <span class="e">Transport</span></span></div>
+      <h2>UDP</h2>
+      <p class="sz"><span class="ph">不握手、</span><span class="ph">不重送，</span><span class="ph">快但</span><span class="ph">不保證</span><span class="ph">送到</span></p>
+      <p class="se" lang="en">No handshake, no retries — fast, no guarantees</p>
+     </div>
+     <div class="lk">
+      <a class="la" href="a-journey.html?p=udp" aria-label="UDP：封包旅程 A（5 步）"><span class="t"><b>A</b>封包旅程</span><span class="pv" aria-hidden="true">5 步 · 5 steps</span></a>
+      <a class="lb" href="b-section.html?p=udp" aria-label="UDP：分層剖面 B（5 步）"><span class="t"><b>B</b>分層剖面</span><span class="pv" aria-hidden="true">5 步 · 5 steps</span></a>
+     </div>
+    </div>
+   </li>
+   <li class="pos st" id="tcp" data-ly="4">
+    <span class="node" aria-hidden="true"><span class="ring"></span></span>
+    <span class="nl" aria-hidden="true">TCP</span>
+    <span class="ghost" aria-hidden="true">L4</span>
+    <div class="card inr">
+     <div class="tx">
+      <div class="meta"><span class="no">04<i>/14</i></span><span class="ly">L4 · 傳輸 <span class="e">Transport</span></span></div>
+      <h2>TCP</h2>
+      <p class="sz"><span class="ph">三向交握、</span><span class="ph">編號與重送，</span><span class="ph">把不可靠的</span><span class="ph">網路</span><span class="ph">變可靠</span></p>
+      <p class="se" lang="en">Handshake, sequence numbers and retransmits for reliable delivery</p>
+     </div>
+     <div class="lk">
+      <a class="la" href="a-journey.html?p=tcp" aria-label="TCP：封包旅程 A（6 步）"><span class="t"><b>A</b>封包旅程</span><span class="pv" aria-hidden="true">6 步 · 6 steps</span></a>
+      <a class="lb" href="b-section.html?p=tcp" aria-label="TCP：分層剖面 B（6 步）"><span class="t"><b>B</b>分層剖面</span><span class="pv" aria-hidden="true">6 步 · 6 steps</span></a>
+     </div>
+    </div>
+   </li>
+   <li class="pos st" id="dns" data-ly="7">
+    <span class="node" aria-hidden="true"><span class="ring"></span></span>
+    <span class="nl" aria-hidden="true">DNS</span>
+    <span class="ghost" aria-hidden="true">L7</span>
+    <div class="card inr">
+     <div class="tx">
+      <div class="meta"><span class="no">05<i>/14</i></span><span class="ly">L7 · 應用 <span class="e">Application</span></span></div>
+      <h2>DNS</h2>
+      <p class="sz"><span class="ph">把</span> <span class="ph">www.example.com</span> <span class="ph">這種名字</span><span class="ph">翻成</span> <span class="ph">IP 位址</span></p>
+      <p class="se" lang="en">Translates names like www.example.com into IP addresses</p>
+     </div>
+     <div class="lk">
+      <a class="la" href="a-journey.html?p=dns" aria-label="DNS：封包旅程 A（5 步）"><span class="t"><b>A</b>封包旅程</span><span class="pv" aria-hidden="true">5 步 · 5 steps</span></a>
+      <a class="lb" href="b-section.html?p=dns" aria-label="DNS：分層剖面 B（5 步）"><span class="t"><b>B</b>分層剖面</span><span class="pv" aria-hidden="true">5 步 · 5 steps</span></a>
+     </div>
+    </div>
+   </li>
+   <li class="pos st" id="dhcp" data-ly="7">
+    <span class="node" aria-hidden="true"><span class="ring"></span></span>
+    <span class="nl" aria-hidden="true">DHCP</span>
+    <span class="ghost" aria-hidden="true">L7</span>
+    <div class="card inr">
+     <div class="tx">
+      <div class="meta"><span class="no">06<i>/14</i></span><span class="ly">L7 · 應用 <span class="e">Application</span></span></div>
+      <h2>DHCP</h2>
+      <p class="sz"><span class="ph">新裝置</span><span class="ph">上網時，</span><span class="ph">自動領到</span> <span class="ph">IP、閘道</span><span class="ph">與 DNS</span></p>
+      <p class="se" lang="en">Hands a new device its IP, gateway and DNS automatically</p>
+     </div>
+     <div class="lk">
+      <a class="la" href="a-journey.html?p=dhcp" aria-label="DHCP：封包旅程 A（6 步）"><span class="t"><b>A</b>封包旅程</span><span class="pv" aria-hidden="true">6 步 · 6 steps</span></a>
+      <a class="lb" href="b-section.html?p=dhcp" aria-label="DHCP：分層剖面 B（6 步）"><span class="t"><b>B</b>分層剖面</span><span class="pv" aria-hidden="true">6 步 · 6 steps</span></a>
+     </div>
+    </div>
+   </li>
+   <li class="pos st" id="http" data-ly="7">
+    <span class="node" aria-hidden="true"><span class="ring"></span></span>
+    <span class="nl" aria-hidden="true">HTTP</span>
+    <span class="ghost" aria-hidden="true">L7</span>
+    <div class="card inr">
+     <div class="tx">
+      <div class="meta"><span class="no">07<i>/14</i></span><span class="ly">L7 · 應用 <span class="e">Application</span></span></div>
+      <h2>HTTP</h2>
+      <p class="sz"><span class="ph">瀏覽器</span><span class="ph">向伺服器</span><span class="ph">要網頁的</span><span class="ph">請求與回應</span></p>
+      <p class="se" lang="en">The request and response behind every web page</p>
+     </div>
+     <div class="lk">
+      <a class="la" href="a-journey.html?p=http" aria-label="HTTP：封包旅程 A（5 步）"><span class="t"><b>A</b>封包旅程</span><span class="pv" aria-hidden="true">5 步 · 5 steps</span></a>
+      <a class="lb" href="b-section.html?p=http" aria-label="HTTP：分層剖面 B（5 步）"><span class="t"><b>B</b>分層剖面</span><span class="pv" aria-hidden="true">5 步 · 5 steps</span></a>
+     </div>
+    </div>
+   </li>
+   <li class="pos st" id="https" data-ly="7">
+    <span class="node" aria-hidden="true"><span class="ring"></span></span>
+    <span class="nl" aria-hidden="true">HTTPS</span>
+    <span class="ghost" aria-hidden="true">L7</span>
+    <div class="card inr">
+     <div class="tx">
+      <div class="meta"><span class="no">08<i>/14</i></span><span class="ly">L7 · 應用 <span class="e">Application</span></span></div>
+      <h2>HTTPS</h2>
+      <p class="sz"><span class="ph">在 HTTP 外面</span><span class="ph">包一層加密，</span><span class="ph">旁人</span><span class="ph">看不到內容</span></p>
+      <p class="se" lang="en">HTTP wrapped in encryption so bystanders see nothing</p>
+     </div>
+     <div class="lk">
+      <a class="la" href="a-journey.html?p=https" aria-label="HTTPS：封包旅程 A（6 步）"><span class="t"><b>A</b>封包旅程</span><span class="pv" aria-hidden="true">6 步 · 6 steps</span></a>
+      <a class="lb" href="b-section.html?p=https" aria-label="HTTPS：分層剖面 B（6 步）"><span class="t"><b>B</b>分層剖面</span><span class="pv" aria-hidden="true">6 步 · 6 steps</span></a>
+     </div>
+    </div>
+   </li>
+   <li class="pos st" id="tls" data-ly="56">
+    <span class="node" aria-hidden="true"><span class="ring"></span></span>
+    <span class="nl" aria-hidden="true">TLS/SSL</span>
+    <span class="ghost" aria-hidden="true">L5–6</span>
+    <div class="card inr">
+     <div class="tx">
+      <div class="meta"><span class="no">09<i>/14</i></span><span class="ly">L5–6 · 表達 <span class="e">Presentation</span></span></div>
+      <h2>TLS/SSL</h2>
+      <p class="sz"><span class="ph">雙方</span><span class="ph">協商金鑰、</span><span class="ph">驗證憑證，</span><span class="ph">建立</span><span class="ph">加密通道</span></p>
+      <p class="se" lang="en">Negotiates keys and verifies certificates to open a secure channel</p>
+     </div>
+     <div class="lk">
+      <a class="la" href="a-journey.html?p=tls" aria-label="TLS/SSL：封包旅程 A（6 步）"><span class="t"><b>A</b>封包旅程</span><span class="pv" aria-hidden="true">6 步 · 6 steps</span></a>
+      <a class="lb" href="b-section.html?p=tls" aria-label="TLS/SSL：分層剖面 B（6 步）"><span class="t"><b>B</b>分層剖面</span><span class="pv" aria-hidden="true">6 步 · 6 steps</span></a>
+     </div>
+    </div>
+   </li>
+   <li class="pos st" id="smtp" data-ly="7">
+    <span class="node" aria-hidden="true"><span class="ring"></span></span>
+    <span class="nl" aria-hidden="true">SMTP</span>
+    <span class="ghost" aria-hidden="true">L7</span>
+    <div class="card inr">
+     <div class="tx">
+      <div class="meta"><span class="no">10<i>/14</i></span><span class="ly">L7 · 應用 <span class="e">Application</span></span></div>
+      <h2>SMTP</h2>
+      <p class="sz"><span class="ph">把一封信</span><span class="ph">從寄件端</span><span class="ph">投遞到</span><span class="ph">對方的</span><span class="ph">郵件伺服器</span></p>
+      <p class="se" lang="en">Delivers a message to the recipient's mail server</p>
+     </div>
+     <div class="lk">
+      <a class="la" href="a-journey.html?p=smtp" aria-label="SMTP：封包旅程 A（6 步）"><span class="t"><b>A</b>封包旅程</span><span class="pv" aria-hidden="true">6 步 · 6 steps</span></a>
+      <a class="lb" href="b-section.html?p=smtp" aria-label="SMTP：分層剖面 B（6 步）"><span class="t"><b>B</b>分層剖面</span><span class="pv" aria-hidden="true">6 步 · 6 steps</span></a>
+     </div>
+    </div>
+   </li>
+   <li class="pos st" id="pop3" data-ly="7">
+    <span class="node" aria-hidden="true"><span class="ring"></span></span>
+    <span class="nl" aria-hidden="true">POP3</span>
+    <span class="ghost" aria-hidden="true">L7</span>
+    <div class="card inr">
+     <div class="tx">
+      <div class="meta"><span class="no">11<i>/14</i></span><span class="ly">L7 · 應用 <span class="e">Application</span></span></div>
+      <h2>POP3</h2>
+      <p class="sz"><span class="ph">把信</span><span class="ph">從伺服器</span><span class="ph">下載回來，</span><span class="ph">通常</span><span class="ph">下載後</span><span class="ph">就刪掉</span></p>
+      <p class="se" lang="en">Downloads mail from the server, usually deleting it after</p>
+     </div>
+     <div class="lk">
+      <a class="la" href="a-journey.html?p=pop3" aria-label="POP3：封包旅程 A（5 步）"><span class="t"><b>A</b>封包旅程</span><span class="pv" aria-hidden="true">5 步 · 5 steps</span></a>
+      <a class="lb" href="b-section.html?p=pop3" aria-label="POP3：分層剖面 B（5 步）"><span class="t"><b>B</b>分層剖面</span><span class="pv" aria-hidden="true">5 步 · 5 steps</span></a>
+     </div>
+    </div>
+   </li>
+   <li class="pos st" id="imap" data-ly="7">
+    <span class="node" aria-hidden="true"><span class="ring"></span></span>
+    <span class="nl" aria-hidden="true">IMAP</span>
+    <span class="ghost" aria-hidden="true">L7</span>
+    <div class="card inr">
+     <div class="tx">
+      <div class="meta"><span class="no">12<i>/14</i></span><span class="ly">L7 · 應用 <span class="e">Application</span></span></div>
+      <h2>IMAP</h2>
+      <p class="sz"><span class="ph">信</span><span class="ph">留在伺服器上，</span><span class="ph">多台裝置</span><span class="ph">同步</span><span class="ph">同一個信箱</span></p>
+      <p class="se" lang="en">Keeps mail on the server so every device stays in sync</p>
+     </div>
+     <div class="lk">
+      <a class="la" href="a-journey.html?p=imap" aria-label="IMAP：封包旅程 A（5 步）"><span class="t"><b>A</b>封包旅程</span><span class="pv" aria-hidden="true">5 步 · 5 steps</span></a>
+      <a class="lb" href="b-section.html?p=imap" aria-label="IMAP：分層剖面 B（5 步）"><span class="t"><b>B</b>分層剖面</span><span class="pv" aria-hidden="true">5 步 · 5 steps</span></a>
+     </div>
+    </div>
+   </li>
+   <li class="pos st" id="ftp" data-ly="7">
+    <span class="node" aria-hidden="true"><span class="ring"></span></span>
+    <span class="nl" aria-hidden="true">FTP</span>
+    <span class="ghost" aria-hidden="true">L7</span>
+    <div class="card inr">
+     <div class="tx">
+      <div class="meta"><span class="no">13<i>/14</i></span><span class="ly">L7 · 應用 <span class="e">Application</span></span></div>
+      <h2>FTP</h2>
+      <p class="sz"><span class="ph">一條</span><span class="ph">控制連線</span><span class="ph">下指令，</span><span class="ph">另一條</span><span class="ph">資料連線</span><span class="ph">傳檔案</span></p>
+      <p class="se" lang="en">One connection for commands, another for the file itself</p>
+     </div>
+     <div class="lk">
+      <a class="la" href="a-journey.html?p=ftp" aria-label="FTP：封包旅程 A（6 步）"><span class="t"><b>A</b>封包旅程</span><span class="pv" aria-hidden="true">6 步 · 6 steps</span></a>
+      <a class="lb" href="b-section.html?p=ftp" aria-label="FTP：分層剖面 B（6 步）"><span class="t"><b>B</b>分層剖面</span><span class="pv" aria-hidden="true">6 步 · 6 steps</span></a>
+     </div>
+    </div>
+   </li>
+   <li class="pos st" id="ssh" data-ly="7">
+    <span class="node" aria-hidden="true"><span class="ring"></span></span>
+    <span class="nl" aria-hidden="true">SSH</span>
+    <span class="ghost" aria-hidden="true">L7</span>
+    <div class="card inr">
+     <div class="tx">
+      <div class="meta"><span class="no">14<i>/14</i></span><span class="ly">L7 · 應用 <span class="e">Application</span></span></div>
+      <h2>SSH</h2>
+      <p class="sz"><span class="ph">加密的</span><span class="ph">遠端登入：</span><span class="ph">金鑰交換、</span><span class="ph">驗證身分</span><span class="ph">再開</span><span class="ph">工作階段</span></p>
+      <p class="se" lang="en">Encrypted remote login: key exchange, authentication, then a session</p>
+     </div>
+     <div class="lk">
+      <a class="la" href="a-journey.html?p=ssh" aria-label="SSH：封包旅程 A（6 步）"><span class="t"><b>A</b>封包旅程</span><span class="pv" aria-hidden="true">6 步 · 6 steps</span></a>
+      <a class="lb" href="b-section.html?p=ssh" aria-label="SSH：分層剖面 B（6 步）"><span class="t"><b>B</b>分層剖面</span><span class="pv" aria-hidden="true">6 步 · 6 steps</span></a>
+     </div>
+    </div>
+   </li>
+  </ol>
+
+  <section class="pos enter" id="enter" aria-labelledby="he">
+   <div class="ent-in">
+    <span class="node" aria-hidden="true"><span class="ring"></span></span>
+    <div class="ent-main inr">
+    <p class="kick c" id="he">到站了 · 選一種看法進去 &nbsp;Arrived — choose your view</p>
+    <div class="gate">
+     <article class="door a d-a">
+      <div class="tag">View A · 暗色 Dark</div>
+      <h2>封包旅程<em>The Packet's Journey</em></h2>
+      <p class="lead"><span class="ph">鏡頭</span><span class="ph">跟著</span><span class="ph">一個封包，</span><span class="ph">從你的電腦</span><span class="ph">出發，</span><span class="ph">穿過</span><span class="ph">路由器</span><span class="ph">與</span><span class="ph">網際網路，</span><span class="ph">到伺服器</span><span class="ph">再回來。</span></p>
+      <p class="leaden" lang="en">Follow one packet from your laptop to the server and back, with narration at every hop.</p>
+      <div class="art" aria-hidden="true"><svg viewBox="0 0 450 110" preserveAspectRatio="xMidYMid meet"><g transform="translate(0,12)">
+        <path d="M30 56 L120 56 L180 16 L270 16 L330 56 L420 56" fill="none" stroke="rgba(234,240,255,.3)" stroke-width="2" stroke-dasharray="5 6"/>
+        <g fill="#121828" stroke="#4DD6FF" stroke-width="2"><circle cx="30" cy="56" r="8"/><circle cx="180" cy="16" r="8"/><circle cx="270" cy="16" r="8"/><circle cx="420" cy="56" r="8"/></g>
+        <rect class="adot" x="24" y="50" width="12" height="12" rx="3" fill="#FFB020"/>
+        <g font-family="ui-monospace,Menlo,monospace" font-size="10" fill="#9AA7C7"><text x="12" y="82">client</text><text x="160" y="42">router</text><text x="248" y="42">internet</text><text x="394" y="82">server</text></g>
+      </g></svg></div>
+      <a class="pill" href="a-journey.html">開始旅程 <small>Start the journey</small><span aria-hidden="true">→</span></a>
+     </article>
+     <article class="door b d-b">
+      <div class="tag">View B · 淺色 Light</div>
+      <h2>分層剖面<em>Stack Anatomy</em></h2>
+      <p class="lead"><span class="ph">把網路</span><span class="ph">一層層</span><span class="ph">剖開：</span><span class="ph">資料</span><span class="ph">往下送時</span><span class="ph">每一層</span><span class="ph">包上</span><span class="ph">自己的</span><span class="ph">標頭，</span><span class="ph">到對方</span><span class="ph">再</span><span class="ph">一層層</span><span class="ph">拆開。</span></p>
+      <p class="leaden" lang="en">Each layer wraps its own header on the way down and unwraps it on the way up.</p>
+      <div class="art" aria-hidden="true"><svg viewBox="0 0 450 110" preserveAspectRatio="xMidYMid meet"><g font-family="ui-monospace,Menlo,monospace" font-size="10" fill="#14110F">
+        <rect class="bl" x="55" y="8" width="340" height="94" rx="3" fill="none" stroke="#14110F" stroke-width="1.4"/>
+        <rect class="bl" x="95" y="20" width="260" height="70" rx="3" fill="none" stroke="#14110F" stroke-width="1.4"/>
+        <rect class="bl" x="135" y="31" width="180" height="48" rx="3" fill="none" stroke="#14110F" stroke-width="1.4"/>
+        <rect class="bl" x="170" y="40" width="110" height="30" rx="3" fill="#E9E3D4" stroke="#D93A1E" stroke-width="1.6"/>
+        <rect class="bl" x="195" y="48" width="60" height="14" rx="2" fill="#D93A1E"/>
+        <text x="62" y="20">L2</text><text x="102" y="32">L3</text><text x="142" y="43">L4</text><text x="177" y="52" font-size="9">L7</text>
+      </g></svg></div>
+      <a class="pill" href="b-section.html">開始剖析 <small>Open the layers</small><span aria-hidden="true">→</span></a>
+     </article>
+    </div>
+    </div>
+   </div>
+   <div class="ent-foot inr">
+    <p class="kb"><span class="zh">操作：</span><kbd>←</kbd><kbd>→</kbd> / <kbd>J</kbd><kbd>K</kbd> 換站 · <kbd>Home</kbd><kbd>End</kbd> 頭尾 · 滾輪／拖曳／滑動 · <kbd>Esc</kbd> 停止導覽</p>
+    <p><span class="zh"><span class="ph">互動教學動畫，</span><span class="ph">供學習</span><span class="ph">與教學參考。</span></span> Interactive teaching animations for learning and reference.</p>
+   </div>
+  </section>
+
+  <i class="pkt" id="pkt" aria-hidden="true"></i><i class="gh" aria-hidden="true"></i><i class="gh" aria-hidden="true"></i><i class="gh" aria-hidden="true"></i>
+ </div>
+</main>
+
+<div class="ruler" id="ruler" role="group" aria-label="OSI 層次尺 · Layer ruler">
+ <i class="ind" id="ind" aria-hidden="true"></i>
+ <ol>
+  <li data-r="0"><b>L7</b><em>應用</em><span class="e">Application</span></li>
+  <li data-r="1"><b>L5–6</b><em>表達</em><span class="e">Pres./Session</span></li>
+  <li data-r="2"><b>L4</b><em>傳輸</em><span class="e">Transport</span></li>
+  <li data-r="3"><b>L3</b><em>網路</em><span class="e">Network</span></li>
+  <li data-r="4"><b>L2</b><em>連結</em><span class="e">Link</span></li>
+ </ol>
+</div>
+
+<nav class="ctrl" aria-label="站點導覽 · Station navigation">
+ <button type="button" class="btn auto" id="auto" aria-pressed="false" aria-label="自動導覽 · Auto"><span class="ar" aria-hidden="true">▶</span><span class="t">自動導覽</span><span class="e mono">Auto</span></button>
+ <div class="navc">
+  <button type="button" class="btn nav" id="prev" aria-label="上一站 · Previous"><span class="ar" aria-hidden="true">←</span><span class="t">上一站</span></button>
+  <ol class="dots" id="dots"><li><button type="button" class="end" aria-label="起點 Start" title="起點 Start"></button></li><li><button type="button" class="" aria-label="第 1 站 IP（共 14 站）" title="第 1 站 IP（共 14 站）"></button></li><li><button type="button" class="" aria-label="第 2 站 ICMP（共 14 站）" title="第 2 站 ICMP（共 14 站）"></button></li><li><button type="button" class="" aria-label="第 3 站 UDP（共 14 站）" title="第 3 站 UDP（共 14 站）"></button></li><li><button type="button" class="" aria-label="第 4 站 TCP（共 14 站）" title="第 4 站 TCP（共 14 站）"></button></li><li><button type="button" class="" aria-label="第 5 站 DNS（共 14 站）" title="第 5 站 DNS（共 14 站）"></button></li><li><button type="button" class="" aria-label="第 6 站 DHCP（共 14 站）" title="第 6 站 DHCP（共 14 站）"></button></li><li><button type="button" class="" aria-label="第 7 站 HTTP（共 14 站）" title="第 7 站 HTTP（共 14 站）"></button></li><li><button type="button" class="" aria-label="第 8 站 HTTPS（共 14 站）" title="第 8 站 HTTPS（共 14 站）"></button></li><li><button type="button" class="" aria-label="第 9 站 TLS/SSL（共 14 站）" title="第 9 站 TLS/SSL（共 14 站）"></button></li><li><button type="button" class="" aria-label="第 10 站 SMTP（共 14 站）" title="第 10 站 SMTP（共 14 站）"></button></li><li><button type="button" class="" aria-label="第 11 站 POP3（共 14 站）" title="第 11 站 POP3（共 14 站）"></button></li><li><button type="button" class="" aria-label="第 12 站 IMAP（共 14 站）" title="第 12 站 IMAP（共 14 站）"></button></li><li><button type="button" class="" aria-label="第 13 站 FTP（共 14 站）" title="第 13 站 FTP（共 14 站）"></button></li><li><button type="button" class="" aria-label="第 14 站 SSH（共 14 站）" title="第 14 站 SSH（共 14 站）"></button></li><li><button type="button" class="end" aria-label="入口 Choose a view" title="入口 Choose a view"></button></li></ol>
+  <button type="button" class="btn nav" id="next" aria-label="下一站 · Next"><span class="t">下一站</span><span class="ar" aria-hidden="true">→</span></button>
+ </div>
+ <p class="cnt" id="cnt" role="status" aria-live="polite"></p>
+</nav>
+</div>
+
+<script>
+(function(){
+'use strict';
+var root=document.documentElement,$=function(s,c){return (c||document).querySelector(s)};
+var view=$('#view'),world=$('#world'),pkt=$('#pkt'),lineEl=$('#line'),walked=$('#walked');
+var ghs=[].slice.call(world.querySelectorAll('.gh'));
+var poss=[].slice.call(world.querySelectorAll('.pos'));
+var N=poss.length-1;               // 最後一個位置的索引（15）
+var sts=[].slice.call(world.querySelectorAll('.st'));
+var dotBtns=[].slice.call(document.querySelectorAll('#dots button'));
+var cnt=$('#cnt'),ind=$('#ind'),rulerLis=[].slice.call(document.querySelectorAll('#ruler li'));
+var prevB=$('#prev'),nextB=$('#next'),autoB=$('#auto');
+var mqH=matchMedia('(min-width:820px) and (orientation:landscape)');
+var mqRM=matchMedia('(prefers-reduced-motion: reduce)');
+var RMAP={'7':0,'56':1,'4':2,'3':3};
+var nodes=poss.map(function(p){return $('.node',p)});
+var ids=poss.map(function(p,k){return k===0?'start':k===N?'enter':p.id});
+var H=true,vw=0,vh=0,nx=[],ny=[],cc=[],lineLen=1;
+var idx=0,fp=0,fc=0,anim=null,drop=null,dragOff=0,dragging=false,raf=0,RM=mqRM.matches,ready=false;
+var auto=false,autoT=0,heroEl=poss[0],lastHf='';
+
+/* ---------- 工具 ---------- */
+function clamp(i){i=Math.round(+i);return i<0?0:i>N?N:(i||0)}
+function lerpA(a,f){if(f<=0)return a[0];if(f>=N)return a[N];var k=Math.floor(f);return a[k]+(a[k+1]-a[k])*(f-k)}
+function invA(a,v){ // a 單調遞增；回傳使 lerpA(a,f)=v 的 f
+  if(v<=a[0])return (v-a[0])/((a[1]-a[0])||1);
+  if(v>=a[N])return N+(v-a[N])/((a[N]-a[N-1])||1);
+  for(var k=0;k<N;k++)if(v<=a[k+1])return k+(v-a[k])/((a[k+1]-a[k])||1);
+  return N}
+function eOut(t){return 1-Math.pow(1-t,3)}
+function eIO(t){return t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2}
+function pad(n){return n<10?'0'+n:''+n}
+
+/* ---------- 版面量測 ---------- */
+function layout(){
+  H=mqH.matches;
+  root.setAttribute('data-axis',H?'h':'v');
+  root.setAttribute('data-short',H&&innerHeight<=560?'1':'0');
+  var vh0=view.clientHeight,kk=1,ke=1;
+  if(H&&(innerWidth>=1600||innerHeight>=1000))kk=Math.max(1,Math.min(innerWidth/1440,vh0/800)*1.12); // 大螢幕：站卡依視窗放大、垂直置中
+  kk=Math.round(kk*100)/100;
+  root.style.setProperty('--k',kk);
+  if(kk>1){root.setAttribute('data-big','1');root.style.setProperty('--at','56px')}else{root.removeAttribute('data-big');root.style.removeProperty('--at')}
+  root.style.removeProperty('--pb');
+  if(kk>1){ // 以典型站卡高度為準，把「卡片＋路徑＋站名」整組置於錨點列下方的可用高度正中
+    var hs=sts.map(function(e){var c=$('.card',e);return c?c.offsetHeight:0}).sort(function(a,b){return a-b}),hc=hs[hs.length>>1]; // 以站卡高度的中位數為準（卡片貼底對齊，較高的卡往上長，仍受 max-height 保護）
+    var free=vh0-56-(hc*kk+56),gap=Math.min(free/2,.11*innerHeight); // 錨點列到卡片頂的空白：置中，但上限 11% 視窗高（略偏上的光學中心）
+    var pbv=Math.round(Math.max(62,vh0-56-gap-hc*kk-28));root.style.setProperty('--pb',pbv+'px');
+    var em=$('.ent-main');if(em)ke=Math.max(1,Math.min(kk,(vh0-pbv-30-56-14)/em.offsetHeight)); // 入口站的放大不得頂到上緣錨點列
+  }
+  root.style.setProperty('--ke',Math.round(ke*100)/100);
+  vw=view.clientWidth;vh=view.clientHeight;
+  root.style.setProperty('--vw',vw+'px');root.style.setProperty('--vh',vh+'px');
+  var wr=world.getBoundingClientRect();
+  nx=[];ny=[];cc=[];
+  poss.forEach(function(p,k){
+    var r=p.getBoundingClientRect(),n=nodes[k].getBoundingClientRect();
+    nx[k]=n.left+n.width/2-wr.left;ny[k]=n.top+n.height/2-wr.top;
+    cc[k]=H?r.left+r.width/2-wr.left:r.top+r.height/2-wr.top;
+  });
+  var a=H?nx:ny;lineLen=Math.max(1,a[N]-a[0]);
+  var s=lineEl.style,w=walked.style;
+  if(H){s.left=w.left=nx[0]+'px';s.top=ny[0]-1+'px';w.top=ny[0]-1.5+'px';s.width=w.width=lineLen+'px';s.height='2px';w.height='3px'}
+  else{s.left=nx[0]-1+'px';w.left=nx[0]-1.5+'px';s.top=w.top=ny[0]+'px';s.height=w.height=lineLen+'px';s.width='2px';w.width='3px'}
+}
+
+/* ---------- 繪製（只動 transform / opacity） ---------- */
+function xf(el,f,dx,dy,sc){
+  var x=lerpA(nx,f)-9+dx,y=lerpA(ny,f)-9+dy,fr=f-Math.floor(f),hop=(anim&&!drop)?Math.sin(Math.PI*fr)*(H?12:12):0;
+  if(H)y-=hop;else x+=hop;
+  el.style.transform='translate3d('+x.toFixed(1)+'px,'+y.toFixed(1)+'px,0)'+(sc!=null?' scale('+sc+')':'');
+}
+function draw(){
+  var c=lerpA(cc,fc),t=(H?vw:vh)/2-c+dragOff;
+  if(!anim&&!drop&&!dragging&&!dragOff)t=Math.round(t); // 靜止時取整數像素：不同來源路徑（過場／hash／重載）的合成點陣一致，不因小數位移而有次像素差
+  world.style.transform=H?'translate3d('+t.toFixed(1)+'px,0,0)':'translate3d(0,'+t.toFixed(1)+'px,0)';
+  if(drop){pkt.style.transform=drop.tf}else xf(pkt,fp,0,0);
+  var a=H?nx:ny,frac=(lerpA(a,fp)-a[0])/lineLen;frac=frac<0?0:frac>1?1:frac;
+  walked.style.transform=H?'scaleX('+frac.toFixed(4)+')':'scaleY('+frac.toFixed(4)+')';
+  var hf=(1-fc);hf=(hf<0?0:hf>1?1:hf).toFixed(3); // Hero 淺色半邊：離開 Hero 後淡出（避免寬螢幕在其他站邊緣露出淺色塊）
+  if(hf!==lastHf){lastHf=hf;heroEl.style.setProperty('--hf',hf)}
+}
+
+/* ---------- 站序狀態（離散） ---------- */
+function applyState(i,silent){
+  var ae=document.activeElement;
+  idx=i;
+  poss.forEach(function(p,k){
+    p.classList.remove('cur','vis');if(k===i)p.classList.add('cur');if(k<=i)p.classList.add('vis'); // 固定 class 順序（cur vis），不隨來源路徑而異
+    [].forEach.call(p.querySelectorAll('.inr'),function(e){if(k===i)e.removeAttribute('inert');else e.setAttribute('inert','')});
+    if(k===i)p.setAttribute('aria-current','step');else p.removeAttribute('aria-current');
+  });
+  dotBtns.forEach(function(b,k){b.classList.toggle('seen',k<i);b.removeAttribute('aria-current');b.removeAttribute('tabindex');if(k===i){b.setAttribute('aria-current','step');b.setAttribute('tabindex','0')}else b.setAttribute('tabindex','-1')});
+  prevB.setAttribute('aria-disabled',i===0?'true':'false');nextB.setAttribute('aria-disabled',i===N?'true':'false');
+  var li=i>0&&i<N?poss[i].getAttribute('data-ly'):null,r=li!=null?RMAP[li]:-1;
+  rulerLis.forEach(function(e,k){e.classList.toggle('on',k===r);if(!e.getAttribute('class'))e.removeAttribute('class')});
+  ind.classList.toggle('on',r>=0);ind.style.transform='translateX('+(r>=0?r*100:0)+'%)';
+  // 焦點在舊站（即將 inert）內時，隨換站移到新站的第一個連結；焦點在控制列則不動
+  if(ae&&ae!==document.body&&ae.closest&&ae.closest('.pos')&&!poss[i].contains(ae)){var f=$('a[href]',poss[i]);if(f)f.focus({preventScroll:true})}
+  else if(ae&&dotBtns.indexOf(ae)>=0&&ae!==dotBtns[i])dotBtns[i].focus({preventScroll:true}); // 焦點在進度點：換站後跟著移到新站的點（roving tabindex）
+  var al=$('#anchor .al');if(al)al.innerHTML=i>0&&i<N?'<b>'+pad(i)+'</b> / 14 &nbsp; '+$('.ly',poss[i]).innerHTML:i===N?'入口 · Choose':'起點 · Start';
+  root.classList.toggle('at-hero',i===0);root.classList.toggle('dk',i>0&&i<N); // 暗站：淺色層次尺降階
+  var nm=i===0?'起點 · Start':i===N?'入口 · Choose':$('h2',poss[i]).textContent;
+  cnt.innerHTML=i>0&&i<N?'<b>'+pad(i)+'</b>/14 · '+nm:nm;
+  if(ready&&!silent){try{history.replaceState(null,'','#'+ids[i])}catch(e){}}
+}
+function parkGhosts(f){for(var g=0;g<ghs.length;g++)xf(ghs[g],f,2,2)} // 殘影靜止時固定停在目前站（DOM 不依賴上一次過場的最後一幀）
+function stopDrop(){if(drop){drop=null;pkt.classList.add('show');root.classList.add('ready')}}
+function render(i){ // 純函式：同一 i → 同一畫面
+  i=clamp(i);anim=null;stopDrop();dragOff=0;fp=fc=i;
+  world.classList.remove('moving');pkt.classList.add('show');
+  applyState(i);draw();parkGhosts(i);return i;
+}
+
+/* ---------- 過場 ---------- */
+function ring(k){
+  if(RM||!nodes[k])return;var r=$('.ring',poss[k]);if(!r||!r.animate)return;
+  r.animate([{transform:'scale(1)',opacity:.9},{transform:'scale(4.2)',opacity:0}],{duration:850,easing:'cubic-bezier(.2,.7,.3,1)'});
+}
+function schedule(){if(!raf)raf=requestAnimationFrame(frame)}
+function frame(now){
+  raf=0;
+  if(drop){
+    var t=(now-drop.t0)/drop.dur;
+    if(t>=1){stopDrop();ring(0);draw()}
+    else{
+      var x,y,s,xn=nx[0],yn=ny[0];
+      if(t<.72){var u=t/.72;x=drop.x0+(xn-drop.x0)*eOut(u);y=drop.y0+(yn-drop.y0)*u*u;s=.25+.75*Math.min(1,u*5)}
+      else{var b=(t-.72)/.28;x=xn;y=yn-18*Math.sin(Math.PI*b)*(1-.5*b);s=1}
+      drop.tf='translate3d('+(x-9).toFixed(1)+'px,'+(y-9).toFixed(1)+'px,0) scale('+s.toFixed(3)+')';
+      pkt.classList.add('show');
+    }
+  }
+  if(anim&&anim.sp){
+    var A=anim,dt=Math.min(48,Math.max(0,now-A.tl))/1000;A.tl=now;
+    springStep(A,dt);
+    fc=invA(cc,A.c);var fcs=fc;
+    var gap=A.to-fcs,lead=gap<0?-Math.min(1.2,-gap):Math.min(1.2,gap);   // 封包領先鏡頭最多 1.2 站
+    var pe=Math.exp(-PW*dt),pd=A.p-(fcs+lead),pt=(A.pv+PW*pd)*dt;A.p=fcs+lead+(pd+pt)*pe;A.pv=(A.pv-PW*pt)*pe;fp=A.p;
+    for(var g2=0;g2<ghs.length;g2++)xf(ghs[g2],fp-A.pv*.035*(g2+1),2,2);
+    var k2=Math.round(fp);
+    if(k2!==A.lastK){A.lastK=k2;if(Math.abs(A.to-A.from)<=3&&k2!==A.to)ring(k2)}
+    if(Math.abs(A.c-lerpA(cc,A.to))<.4&&Math.abs(A.v)<8&&Math.abs(A.p-A.to)<.002){var to2=A.to;anim=null;fp=fc=to2;world.classList.remove('moving');ring(to2);draw();parkGhosts(to2);if(auto)armAuto();return}
+  }else if(anim){
+    var u2=Math.min(1,(now-anim.t0)/anim.dur);
+    fp=anim.fp0+(anim.to-anim.fp0)*eOut(Math.min(1,u2*1.25));
+    fc=anim.fc0+(anim.to-anim.fc0)*eIO(u2);
+    for(var g=0;g<ghs.length;g++){var ug=Math.max(0,u2*1.25-.08*(g+1));xf(ghs[g],anim.fp0+(anim.to-anim.fp0)*eOut(Math.min(1,ug)),2,2)}
+    var kk=Math.round(fp);
+    if(kk!==anim.lastK){anim.lastK=kk;if(Math.abs(anim.to-anim.fp0)<=3&&kk!==anim.to)ring(kk)}
+    if(u2>=1){var to=anim.to;anim=null;fp=fc=to;world.classList.remove('moving');ring(to);draw();parkGhosts(to);if(auto)armAuto();return}
+  }
+  draw();
+  if(anim||drop)schedule();
+}
+/* 連按換站：鏡頭不重啟 ease，改為「承接目前位置與速度」的臨界阻尼彈簧只延伸終點；速度上限＝單步峰值 ×1.1，避免停滯後一次衝刺 */
+var SW=12,PW=18; // 彈簧角頻率（1/s）：單步峰速 ≈ 距離×SW/e，與單步補間的峰速相當
+function eIOd(u){return u<.5?12*u*u:3*Math.pow(2-2*u,2)} // eIO 的導數
+function eOutd(u){return 3*Math.pow(1-u,2)}
+function fpAt(a,t){var u=Math.min(1,(t-a.t0)/a.dur);return a.fp0+(a.to-a.fp0)*eOut(Math.min(1,u*1.25))}
+function retarget(i,now){
+  var a=anim;if(a.sp){a.to=i;return}
+  var u=Math.min(1,(now-a.t0)/a.dur),f=a.fc0+(a.to-a.fc0)*eIO(u),k=Math.min(N-1,Math.max(0,Math.floor(f))),
+      slope=(cc[k+1]-cc[k]),vf=(a.to-a.fc0)*eIOd(u)/a.dur*1000; // f/s
+  var pk=3*Math.abs(lerpA(cc,a.to)-lerpA(cc,a.fc0))/(a.dur/1000);   // 原補間的 px 峰速
+  var p=fpAt(a,now),pv=(fpAt(a,now+8)-p)/8*1000;
+  anim={sp:1,c:lerpA(cc,f),v:slope*vf,p:p,pv:pv,to:i,from:a.fp0,cap:Math.max(pk,Math.abs(slope*vf))*1.1,tl:now,lastK:Math.round(p)};
+}
+function springStep(a,dt){
+  var tgt=lerpA(cc,a.to),d=a.c-tgt,e=Math.exp(-SW*dt),tmp=(a.v+SW*d)*dt,x=tgt+(d+tmp)*e,v=(a.v-SW*tmp)*e;
+  if(Math.abs(v)>a.cap){v=v<0?-a.cap:a.cap;x=a.c+(a.v+v)/2*dt}
+  a.c=x;a.v=v;
+}
+function goto(i,o){
+  i=clamp(i);o=o||{};if(!o.auto)stopAuto();
+  if(drop)stopDrop();
+  if(RM||!ready){render(i);return}
+  if(i===idx&&!anim&&!o.fromDrag){return}
+  if(anim&&!o.fromDrag){if(i!==anim.to){retarget(i,performance.now());applyState(i);schedule()}return}
+  var dur=Math.min(820,640+36*Math.abs(i-fp));if(o.fromDrag)dur=Math.max(380,dur-200);
+  anim={fp0:fp,fc0:fc,to:i,t0:performance.now(),dur:dur,lastK:Math.round(fp)};
+  world.classList.add('moving');
+  applyState(i);schedule();
+}
+
+/* ---------- 自動導覽 ---------- */
+function armAuto(){clearTimeout(autoT);if(!auto)return;autoT=setTimeout(function(){if(!auto)return;if(idx>=N){setAuto(false);return}goto(idx+1,{auto:true});if(RM)armAuto()},4000)}
+function setAuto(on){auto=!!on&&!RM;autoB.setAttribute('aria-pressed',auto?'true':'false');
+  $('.t',autoB).textContent=auto?'停止導覽':'自動導覽';autoB.setAttribute('aria-label',auto?'停止導覽 · Stop':'自動導覽 · Auto');$('.ar',autoB).textContent=auto?'■':'▶';clearTimeout(autoT);if(auto){if(idx>=N){setAuto(false);return}armAuto()}}
+function stopAuto(){if(auto)setAuto(false)}
+
+/* ---------- 輸入 ---------- */
+function step(d,o){goto(idx+d,o)}
+document.addEventListener('keydown',function(e){
+  if(e.defaultPrevented||e.ctrlKey||e.metaKey||e.altKey)return;
+  var t=e.target;if(t&&/^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName))return;
+  var k=e.key,d=0,to=-1;
+  if(k==='ArrowRight'||k==='ArrowDown'||k==='j'||k==='J'||k==='PageDown')d=1;
+  else if(k==='ArrowLeft'||k==='ArrowUp'||k==='k'||k==='K'||k==='PageUp')d=-1;
+  else if(k==='Home')to=0;else if(k==='End')to=N;
+  else if(k==='Escape'){stopAuto();return}
+  else return;
+  e.preventDefault();if(to>=0)goto(to);else step(d);
+});
+prevB.addEventListener('click',function(){step(-1)});
+nextB.addEventListener('click',function(){step(1)});
+autoB.addEventListener('click',function(){setAuto(!auto)});
+dotBtns.forEach(function(b,k){b.addEventListener('click',function(){goto(k)})});
+view.addEventListener('click',function(e){
+  if(performance.now()<suppressUntil){e.preventDefault();e.stopPropagation();return}
+  var p=e.target.closest('.pos');if(!p)return;var k=poss.indexOf(p);
+  if(k>=0&&k!==idx){e.preventDefault();goto(k)}
+},true);
+view.addEventListener('focusin',function(e){var p=e.target.closest('.pos'),k=p?poss.indexOf(p):-1;if(k>=0&&k!==idx)goto(k);view.scrollLeft=0;view.scrollTop=0});
+window.addEventListener('hashchange',function(){var k=fromHash();if(k>=0&&k!==idx)goto(k)});
+function fromHash(){var h=decodeURIComponent(location.hash.replace(/^#/,'')).toLowerCase();return ids.indexOf(h)}
+
+/* 滾輪：一次手勢 = 一站（節流；不捲頁） */
+var lockUntil=0,lastMag=0,lastStep=-1e9;
+view.addEventListener('dragstart',function(e){e.preventDefault()}); // 滑鼠從 A/B 連結起手拖曳時，不讓瀏覽器啟動原生連結拖放（否則 pointer 事件中止、換站手勢失效）；單純點擊不受影響
+[].forEach.call(view.querySelectorAll('a[href]'),function(a){a.draggable=false});
+view.addEventListener('wheel',function(e){
+  if(e.ctrlKey)return;
+  var c=e.target.closest&&e.target.closest('.card');
+  if(c&&c.scrollHeight>c.clientHeight+1&&Math.abs(e.deltaY)>=Math.abs(e.deltaX)){
+    if((e.deltaY>0&&c.scrollTop+c.clientHeight<c.scrollHeight-1)||(e.deltaY<0&&c.scrollTop>0))return}
+  e.preventDefault();
+  var m=e.deltaMode===1?16:e.deltaMode===2?400:1,dx=e.deltaX*m,dy=e.deltaY*m;
+  var d=H?(Math.abs(dx)>Math.abs(dy)?dx:dy):dy,mag=Math.abs(d),now=e.timeStamp;
+  if(mag<4)return;
+  if(now<lockUntil){var fresh=mag>lastMag*1.6+8&&now-lastStep>350;lockUntil=now+150;lastMag=mag;if(!fresh)return}
+  lastStep=now;lockUntil=now+150;lastMag=mag;step(d>0?1:-1);
+},{passive:false});
+
+/* 拖曳／滑動（沿軸向）；放開後依距離或速度換站 */
+var ptr=null,suppressUntil=0;
+view.addEventListener('pointerdown',function(e){
+  if(e.pointerType==='mouse'&&e.button!==0)return;
+  ptr={id:e.pointerId,x:e.clientX,y:e.clientY,d:0,hist:[{t:e.timeStamp,d:0}],on:false};
+});
+view.addEventListener('pointermove',function(e){
+  if(!ptr||e.pointerId!==ptr.id)return;
+  var dx=e.clientX-ptr.x,dy=e.clientY-ptr.y,d=H?dx:dy,o=H?dy:dx;
+  if(!ptr.on){
+    if(Math.abs(d)>8&&Math.abs(d)>Math.abs(o)*1.2){ptr.on=true;ptr.d0=d;dragging=true;stopAuto();if(drop)stopDrop();
+      // 過場中接手：fp/fc 已是目前插值位置，原地凍結（不瞬移），拖曳位移從 0 起算
+      if(anim){anim=null;world.classList.remove('moving')}
+      try{view.setPointerCapture(e.pointerId)}catch(x){}view.classList.add('dragging')}
+    else return}
+  d-=ptr.d0;
+  var off=d;if((idx===0&&d>0)||(idx===N&&d<0))off=d*.3;
+  ptr.d=d;dragOff=off;ptr.hist.push({t:e.timeStamp,d:d});if(ptr.hist.length>6)ptr.hist.shift();
+  schedule();
+});
+function endPtr(e,cancel){
+  if(!ptr||e.pointerId!==ptr.id)return;
+  var p=ptr;ptr=null;if(!p.on)return;
+  dragging=false;view.classList.remove('dragging');suppressUntil=performance.now()+350;
+  try{view.releasePointerCapture(e.pointerId)}catch(x){}
+  var h=p.hist,a=h[0],b=h[h.length-1],v=(b.d-a.d)/Math.max(1,b.t-a.t);
+  var dir=0;if(!cancel){if(p.d<-40||v<-.45)dir=1;else if(p.d>40||v>.45)dir=-1}
+  // 把目前（被拖動的）鏡頭位置換算回站序浮點，再往目標走
+  var c=lerpA(cc,fc)-dragOff;fc=invA(cc,c);dragOff=0;
+  var to=clamp(idx+dir);
+  if(RM){render(to);return}
+  idx=idx;goto(to,{fromDrag:true,auto:false});
+}
+view.addEventListener('pointerup',function(e){endPtr(e,false)});
+view.addEventListener('pointercancel',function(e){endPtr(e,true)});
+
+/* 尺寸／方向／減少動態 */
+var rz=0;
+function relayout(){rz=0;var wasAnim=!!anim;layout();render(idx);}
+function onResize(){if(!rz)rz=requestAnimationFrame(relayout)}
+window.addEventListener('resize',onResize);
+if(mqH.addEventListener)mqH.addEventListener('change',onResize);
+function onRM(){RM=mqRM.matches;root.classList.toggle('rm',RM);if(RM){stopAuto();anim=null;stopDrop();render(idx)}autoB.hidden=RM}
+if(mqRM.addEventListener)mqRM.addEventListener('change',onRM);
+
+/* ---------- 開場：封包從逗號掉下來 ---------- */
+var dropT=0;
+function startDrop(){
+  dropT=0;
+  if(idx!==0||anim){root.classList.add('ready');pkt.classList.add('show');return} // 開場 350ms 內已離開 Hero：不再補播掉落
+  var cm=$('.ttl-l .comma'),r=cm.getBoundingClientRect(),wr=world.getBoundingClientRect();
+  drop={t0:performance.now(),dur:1300,x0:r.left+r.width*.5-wr.left,y0:r.top+r.height*.72-wr.top,tf:''};
+  cm.classList.remove('pop');void cm.offsetWidth;
+  [].forEach.call(document.querySelectorAll('.comma'),function(c){c.classList.add('pop');c.addEventListener('animationend',function(){c.classList.remove('pop')},{once:true})});
+  pkt.classList.remove('show');schedule();
+}
+
+/* ---------- 啟動 ---------- */
+(function init(){
+  onRM();layout();
+  heroEl.setAttribute('style','--hf: 1.000;');lastHf='1.000'; // style 屬性先於 aria-current 出現：屬性順序不隨來源路徑而異
+  var k0=fromHash();
+  render(k0>=0?k0:0);
+  ready=true;
+  if(k0<=0&&!RM){pkt.classList.remove('show');dropT=setTimeout(startDrop,350)}else root.classList.add('ready');
+  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(function(){if(!anim&&!drop){layout();draw()}});
+})();
+
+window.__idx={
+  goto:function(i){goto(i,{})},
+  index:function(){return idx},
+  stations:function(){return sts.map(function(e,n){return {id:e.id,i:n+1,el:e}})},
+  positions:function(){return poss.map(function(e,k){return {id:ids[k],i:k,el:e}})},
+  render:render,
+  busy:function(){return !!(anim||drop||raf||dropT)},
+  snapshot:function(){return JSON.stringify({i:idx,cur:poss.map(function(p){return +p.classList.contains('cur')}).join(''),vis:poss.map(function(p){return +p.classList.contains('vis')}).join(''),inert:poss.map(function(p){return +!!p.querySelector('.inr[inert]')}).join(''),hash:location.hash,cnt:cnt.textContent,ind:ind.style.transform+ind.className,world:world.style.transform,pkt:pkt.style.transform,walked:walked.style.transform,hf:lastHf})}
+};
+})();
+</script>
+</body>
+</html>
