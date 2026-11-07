@@ -493,7 +493,7 @@ h1,h2,h3,p,ol,ul,dl,dd{margin:0;padding:0}
     var steps = cfg.steps, duration = cfg.duration, A = cfg.audio || {};
     var t = 0, playing = false, ended = false, rate = PX.params.rate || parseFloat(store.get('rate', '1')) || 1, last = 0, raf = 0, curStep = -1;
     var narr = PX.params.narr != null ? PX.params.narr !== '0' : store.get('narr', '1') !== '0';
-    var audio = null, audioKey = null, handlers = { frame: [], step: [], state: [] };
+    var audio = null, audioKey = null, el = null, unlocked = false, handlers = { frame: [], step: [], state: [] };
     var perf = PX.params.perf ? [] : null;
     function on(name, fn) { handlers[name].push(fn); return function () { var i = handlers[name].indexOf(fn); if (i >= 0) handlers[name].splice(i, 1); }; }
     function fire(name, a, b) { var h = handlers[name]; for (var i = 0; i < h.length; i++) h[i](a, b); }
@@ -506,6 +506,13 @@ h1,h2,h3,p,ol,ul,dl,dd{margin:0;padding:0}
       fire('frame', t, info());
     }
     function emitState() { fire('state', state()); }
+    /* 手機（iOS Safari）要求每個 <audio> 元素都在使用者手勢內播過一次才能自動播放；
+       舊版每步 new Audio() 在 rAF 內播放會被擋而無聲。改成全程共用同一個元素，並在按播放時（手勢內）解鎖。 */
+    function getEl() { if (!el) { el = new Audio(); el.preload = 'auto'; el.setAttribute('playsinline', ''); } return el; }
+    function unlockAudio() {
+      if (unlocked || !narr) return; unlocked = true;
+      try { var e = getEl(); e.src = 'data:audio/wav;base64,UklGRkQDAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YSADAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgA=='; var p = e.play(); if (p && p.catch) p.catch(function () { unlocked = false; }); } catch (x) { unlocked = false; }
+    }
     function stopAudio() { if (audio) { try { audio.pause(); } catch (e) { } audio = null; audioKey = null; } }
     function audioTick() {
       if (!playing || !narr) { stopAudio(); return; }
@@ -513,7 +520,7 @@ h1,h2,h3,p,ol,ul,dl,dd{margin:0;padding:0}
       var src = A[s.audioId];
       if (!src || off < -0.02 || off >= s.audioDur - 0.02) { if (off >= s.audioDur - 0.02) stopAudio(); return; }
       if (audioKey !== s.audioId) {
-        stopAudio(); audioKey = s.audioId; audio = new Audio(src); audio.playbackRate = rate;
+        stopAudio(); audioKey = s.audioId; audio = getEl(); audio.src = src; audio.playbackRate = rate;
         try { audio.currentTime = Math.max(0, off); } catch (e) { }
         var p = audio.play(); if (p && p.catch) p.catch(function () { audioKey = null; });
       } else if (audio && Math.abs(audio.currentTime - off * 1) > 0.5 * Math.max(1, rate)) { try { audio.currentTime = Math.max(0, off); } catch (e) { } }
@@ -526,7 +533,7 @@ h1,h2,h3,p,ol,ul,dl,dd{margin:0;padding:0}
       if (t >= duration) { t = duration; playing = false; ended = true; stopAudio(); emit(); emitState(); return; }
       emit(); audioTick(); raf = requestAnimationFrame(frame);
     }
-    function play() { if (playing) return; if (ended || t >= duration - 0.01) { t = 0; ended = false; } playing = true; last = performance.now(); raf = requestAnimationFrame(frame); emit(); audioTick(); emitState(); }
+    function play() { if (playing) return; if (ended || t >= duration - 0.01) { t = 0; ended = false; } playing = true; unlockAudio(); last = performance.now(); raf = requestAnimationFrame(frame); emit(); audioTick(); emitState(); }
     function pause() { if (!playing) return; playing = false; cancelAnimationFrame(raf); stopAudio(); emitState(); }
     function toggle() { playing ? pause() : play(); }
     function seek(tt) { t = clamp(tt, 0, duration); ended = false; stopAudio(); emit(); if (playing) audioTick(); emitState(); }
@@ -534,7 +541,7 @@ h1,h2,h3,p,ol,ul,dl,dd{margin:0;padding:0}
     function next() { var k = stepAt(t); if (k < steps.length - 1) seekStep(k + 1); else seek(duration); }
     function prev() { var k = stepAt(t); if (t - steps[k].t0 > 1.2 || k === 0) seekStep(k); else seekStep(k - 1); }
     function setRate(r) { rate = r; store.set('rate', String(r)); if (audio) audio.playbackRate = r; emitState(); }
-    function setNarration(v) { narr = !!v; store.set('narr', narr ? '1' : '0'); if (!narr) stopAudio(); else if (playing) audioTick(); emitState(); }
+    function setNarration(v) { narr = !!v; store.set('narr', narr ? '1' : '0'); if (!narr) stopAudio(); else if (playing) { unlockAudio(); audioTick(); } emitState(); }
     function state() { var i = info(); return { t: t, duration: duration, playing: playing, rate: rate, step: i.step, narr: narr, ended: ended }; }
     function destroy() { playing = false; cancelAnimationFrame(raf); stopAudio(); handlers = { frame: [], step: [], state: [] }; }
     function perfStats() {
